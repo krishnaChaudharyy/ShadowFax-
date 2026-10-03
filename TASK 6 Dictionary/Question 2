@@ -1,0 +1,59 @@
+# Your expenses
+your_expenses = {
+    "Hotel": 1200,
+    "Food": 800,
+    "Transportation": 500,
+    "Attractions": 300,
+    "Miscellaneous": 200
+}
+
+# Your partner's expenses
+partner_expenses = {
+    "Hotel": 1000,
+    "Food": 900,
+    "Transportation": 600,
+    "Attractions": 400,
+    "Miscellaneous": 150
+}
+
+# ---------------------------------------------------------
+# 1. Calculate total expenses for each
+# ---------------------------------------------------------
+your_total = sum(your_expenses.values())
+partner_total = sum(partner_expenses.values())
+
+print("Your total expenses    :", your_total)
+print("Partner total expenses :", partner_total)
+print("-" * 45)
+
+# ---------------------------------------------------------
+# 2. Determine who spent more
+# ---------------------------------------------------------
+if your_total > partner_total:
+    print(f"You spent more money overall (by {your_total - partner_total})")
+elif partner_total > your_total:
+    print(f"Your partner spent more money overall (by {partner_total - your_total})")
+else:
+    print("Both of you spent exactly the same amount")
+print("-" * 45)
+
+# ---------------------------------------------------------
+# 3. Find the category with the biggest difference
+# ---------------------------------------------------------
+max_difference = 0
+max_category = ""
+
+for category in your_expenses:
+    difference = abs(your_expenses[category] - partner_expenses[category])
+    if difference > max_difference:
+        max_difference = difference
+        max_category = category
+
+print(f"Category with biggest difference: {max_category}")
+print(f"Difference amount               : {max_difference}")
+
+# Optional: show who spent more in that category
+if your_expenses[max_category] > partner_expenses[max_category]:
+    print(f"(You spent more in '{max_category}' by {max_difference})")
+else:
+    print(f"(Your partner spent more in '{max_category}' by {max_difference})")
