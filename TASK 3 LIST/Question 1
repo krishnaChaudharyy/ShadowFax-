@@ -1,0 +1,56 @@
+# Initial list
+justice_league = ["Superman", "Batman", "Wonder Woman", "Flash", "Aquaman", "Green Lantern"]
+print("Initial Justice League:", justice_league)
+print("-" * 60)
+
+# ============================================================
+# 1. Calculate the number of members in the Justice League
+# ============================================================
+num_members = len(justice_league)
+print("1. Number of members:", num_members)
+print("-" * 60)
+
+# ============================================================
+# 2. Batman recruited Batgirl and Nightwing as new members
+# ============================================================
+justice_league.append("Batgirl")
+justice_league.append("Nightwing")
+print("2. After adding Batgirl & Nightwing:")
+print("   ", justice_league)
+print("-" * 60)
+
+# ============================================================
+# 3. Wonder Woman is now the leader - move her to the beginning
+# ============================================================
+justice_league.remove("Wonder Woman")       # Remove from current position
+justice_league.insert(0, "Wonder Woman")    # Insert at the beginning
+print("3. After making Wonder Woman the leader:")
+print("   ", justice_league)
+print("-" * 60)
+
+# ============================================================
+# 4. Move "Green Lantern" between Aquaman and Flash
+# ============================================================
+# Current order: ... "Flash", "Aquaman", "Green Lantern" ...
+justice_league.remove("Green Lantern")       # Step 1: Remove Green Lantern
+flash_index = justice_league.index("Flash")  # Step 2: Find Flash's position
+justice_league.insert(flash_index + 1, "Green Lantern")  # Step 3: Insert after Flash
+print("4. After moving Green Lantern between Flash & Aquaman:")
+print("   ", justice_league)
+print("-" * 60)
+
+# ============================================================
+# 5. Replace the entire list with a new team
+# ============================================================
+justice_league = ["Cyborg", "Shazam", "Hawkgirl", "Martian Manhunter", "Green Arrow"]
+print("5. New team assembled by Superman:")
+print("   ", justice_league)
+print("-" * 60)
+
+# ============================================================
+# 6. Sort alphabetically - 0th index becomes the new leader
+# ============================================================
+justice_league.sort()
+print("6. Sorted Justice League:")
+print("   ", justice_league)
+print("   New Leader (index 0):", justice_league[0])

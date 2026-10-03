@@ -1,0 +1,8 @@
+for=4
+
+'''
+Reason: for is a reserved keyword in Python (used for for loops).
+ Keywords cannot be used as variable names, function names, or any other identifiers. 
+ Python throws a SyntaxError because it expects for to be followed by a loop structure, not an assignment.
+Other Python keywords you can't use as variables: if, else, while, def, class, return, import, True, False, None, etc.
+'''

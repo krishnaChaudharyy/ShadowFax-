@@ -1,0 +1,36 @@
+total_jacks = 100          # Total jumping jacks to complete
+set_size = 10              # Each set is 10 jumping jacks
+completed = 0              # How many completed so far
+
+# Loop through each set
+for set_number in range(1, (total_jacks // set_size) + 1):
+    completed += set_size
+    print(f"\nSet {set_number}: You did {set_size} jumping jacks.")
+    print(f"Total completed so far: {completed}")
+    
+    # Ask if tired
+    tired = input("Are you tired? (yes/y or no/n): ").strip().lower()
+    
+    # Check response
+    if tired == "yes" or tired == "y":
+        skip = input("Do you want to skip the remaining sets? (yes/y or no/n): ").strip().lower()
+        
+        if skip == "yes" or skip == "y":
+            print(f"\nYou completed a total of {completed} jumping jacks.")
+            break
+        else:
+            remaining = total_jacks - completed
+            if remaining > 0:
+                print(f"{remaining} jumping jacks remaining.")
+    
+    elif tired == "no" or tired == "n":
+        remaining = total_jacks - completed
+        if remaining > 0:
+            print(f"{remaining} jumping jacks remaining.")
+    
+    else:
+        print("Invalid input. Please answer yes/y or no/n.")
+
+# If loop completed without break
+else:
+    print("\nCongratulations! You completed the workout.")

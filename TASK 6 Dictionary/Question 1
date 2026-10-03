@@ -1,0 +1,16 @@
+#1st Question
+# List of friends' names (at least 5)
+friends = ["Aditya", "Priya", "Rahul", "Sneha", "Vikram", "Ananya"]
+
+# Create a list of tuples: (name, length_of_name)
+name_lengths = []
+
+for name in friends:
+    name_lengths.append((name, len(name)))
+
+# Print the result
+print("Friends list:", friends)
+print("\nList of tuples:")
+for item in name_lengths:
+    print(item)
+

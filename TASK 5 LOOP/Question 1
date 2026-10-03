@@ -1,0 +1,35 @@
+import random
+
+# Variables to count statistics
+count_6 = 0                # Kitni baar 6 aaya
+count_1 = 0                # Kitni baar 1 aaya
+count_two_6s_in_a_row = 0  # Kitni baar do 6s lagataar aaye
+
+previous_roll = 0          # Pichli roll yaad rakhne ke liye
+
+# Roll the die 20 times
+for i in range(20):
+    roll = random.randint(1, 6)
+    print(f"Roll {i+1}: {roll}")
+    
+    # Count 6s
+    if roll == 6:
+        count_6 += 1
+    
+    # Count 1s
+    if roll == 1:
+        count_1 += 1
+    
+    # Check for two 6s in a row
+    if roll == 6 and previous_roll == 6:
+        count_two_6s_in_a_row += 1
+    
+    # Update previous roll for next iteration
+    previous_roll = roll
+
+# Print statistics
+print("\n--- Statistics ---")
+print(f"Number of times rolled a 6: {count_6}")
+print(f"Number of times rolled a 1: {count_1}")
+print(f"Number of times rolled two 6s in a row: {count_two_6s_in_a_row}")
+
