@@ -1,0 +1,281 @@
+import random
+
+MAX_ATTEMPTS = 4
+ALPHABET = "abcdefghijklmnopqrstuvwxyz"
+
+HANGMAN_PICS = [
+    """  +---+
+  |   |
+      |
+      |
+      |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+      |
+      |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+  |   |
+      |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+ /|   |
+      |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+ /|\\  |
+      |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+ /|\\  |
+ /    |
+      |
+=========""",
+
+    """  +---+
+  |   |
+  O   |
+ /|\\  |
+ / \\  |
+      |
+========="""
+]
+
+WORDS = [
+    ("python", "A programming language named after a comedy troupe"),
+    ("guitar", "A six-stringed musical instrument"),
+    ("planet", "A large body orbiting a star"),
+    ("coffee", "A popular caffeinated drink"),
+    ("wizard", "A magic user in fantasy stories"),
+    ("bicycle", "A two-wheeled human-powered vehicle"),
+    ("volcano", "A mountain that can erupt"),
+    ("penguin", "A flightless bird from the southern hemisphere"),
+    ("diamond", "The hardest naturally occurring mineral"),
+    ("library", "A place where books are kept"),
+    ("rocket", "A vehicle that launches into space"),
+    ("island", "Land completely surrounded by water"),
+    ("shadow", "A dark shape cast by an object blocking light"),
+    ("garden", "A plot of land where plants are grown")
+]
+
+
+def clear_screen():
+    print("\n" * 30)
+
+
+def display_state(word, guessed, wrong, hint, message=""):
+    clear_screen()
+
+    print(HANGMAN_PICS[wrong])
+    print()
+
+    masked = " ".join(
+        ch if ch in guessed else "_"
+        for ch in word
+    )
+
+    print("  Word:           " + masked)
+    print("  Hint:           " + hint)
+
+    wrong_letters = sorted(
+        ch for ch in guessed
+        if ch not in word
+    )
+
+    print("  Wrong letters:  " + (" ".join(wrong_letters) or "-"))
+    print("  Attempts left:  " + str(MAX_ATTEMPTS - wrong))
+
+    if message:
+        print("\n  " + message)
+
+
+def get_input(guessed):
+
+    while True:
+        raw = input(
+            "\n  Guess a letter, the whole word, or type 'hint': "
+        ).strip().lower()
+
+        if raw == "hint":
+            return raw
+
+        if len(raw) == 1:
+
+            if raw not in ALPHABET:
+                print("  !! Please enter a letter A-Z.")
+                continue
+
+            if raw in guessed:
+                print(f"  !! You already guessed '{raw}'.")
+                continue
+
+            return raw
+
+        if raw.isalpha():
+            return raw
+
+        print(
+            "  !! Please enter a single letter "
+            "or a whole word (letters only)."
+        )
+
+
+def play_round():
+
+    word, hint = random.choice(WORDS)
+
+    guessed = set()
+    wrong = 0
+    message = ""
+
+    while True:
+
+        display_state(
+            word,
+            guessed,
+            wrong,
+            hint,
+            message
+        )
+
+        message = ""
+
+        # Check WIN
+        if all(ch in guessed for ch in word):
+            print(
+                f"\n  *** You WIN! The word was '{word}'. ***"
+            )
+            return True
+
+        # Check LOSE
+        if wrong >= MAX_ATTEMPTS:
+            print(
+                f"\n  *** You LOSE! The word was '{word}'. ***"
+            )
+            return False
+
+        choice = get_input(guessed)
+
+        # HINT
+        if choice == "hint":
+
+            hidden = [
+                ch for ch in set(word)
+                if ch not in guessed
+            ]
+
+            if hidden:
+                letter = random.choice(hidden)
+
+                guessed.add(letter)
+                wrong += 1
+
+                message = (
+                    f">> Hint revealed '{letter}' "
+                    f"(costs one attempt)."
+                )
+
+            else:
+                message = ">> Nothing left to reveal."
+
+        # SINGLE LETTER
+        elif len(choice) == 1:
+
+            guessed.add(choice)
+
+            if choice in word:
+                message = (
+                    f">> Good guess! '{choice}' is in the word."
+                )
+
+            else:
+                wrong += 1
+                message = (
+                    f">> Sorry, '{choice}' is not in the word."
+                )
+
+        # WHOLE WORD
+        else:
+
+            if choice == word:
+
+                guessed.update(word)
+
+                message = (
+                    f">> Correct! The word is '{word}'."
+                )
+
+            else:
+
+                wrong += 1
+
+                message = (
+                    f">> '{choice}' is not the word. "
+                    f"(-1 attempt)"
+                )
+
+
+def main():
+
+    print("================================")
+    print("       WELCOME TO HANGMAN")
+    print("================================")
+
+    print(
+        f"You get {MAX_ATTEMPTS} incorrect guesses per round."
+    )
+
+    print(
+        "Guess one letter at a time, "
+        "or type the whole word."
+    )
+
+    print(
+        "Type 'hint' to reveal a letter "
+        "(costs one attempt)."
+    )
+
+    input("\nPress Enter to start...")
+
+    while True:
+
+        play_round()
+
+        answer = input(
+            "\n  Play again? (y/n): "
+        ).strip().lower()
+
+        while answer not in ("y", "yes", "n", "no"):
+
+            answer = input(
+                "  Please enter 'y' or 'n': "
+            ).strip().lower()
+
+        if answer in ("n", "no"):
+
+            print("\n  Thanks for playing!")
+            break
+
+
+if __name__ == "__main__":
+    main()

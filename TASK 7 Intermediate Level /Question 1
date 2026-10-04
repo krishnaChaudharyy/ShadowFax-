@@ -1,0 +1,151 @@
+"""
+ShadowFox Static Scraper — extracts paragraphs, headings, and links.
+Falls back gracefully if specific selectors are missing.
+"""
+
+import csv
+import json
+import time
+import logging
+from datetime import datetime
+
+import requests
+from bs4 import BeautifulSoup
+
+URL = "https://www.shadowfox.in/"   # <-- change if needed
+OUTPUT_CSV  = "scraped_data.csv"
+OUTPUT_JSON = "scraped_data.json"
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
+)
+log = logging.getLogger(__name__)
+
+
+def fetch_page(url, retries=3, delay=2):
+    for attempt in range(1, retries + 1):
+        try:
+            log.info(f"Fetching {url} (attempt {attempt}/{retries})")
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            r.raise_for_status()
+            return r
+        except requests.exceptions.Timeout:
+            log.warning(f"Timeout on attempt {attempt}")
+        except requests.exceptions.HTTPError as e:
+            log.error(f"HTTP error: {e}")
+            break
+        except requests.exceptions.ConnectionError:
+            log.warning(f"Connection error on attempt {attempt}")
+        except requests.exceptions.RequestException as e:
+            log.error(f"Unexpected error: {e}")
+            break
+        if attempt < retries:
+            time.sleep(delay)
+    log.error(f"Failed to fetch {url}")
+    return None
+
+
+def parse_page(html):
+    """Extract paragraphs, headings, and links — adapts to whatever exists."""
+    soup = BeautifulSoup(html, "html.parser")
+    items = []
+
+    # --- Extract paragraphs ---
+    for p in soup.find_all("p"):
+        text = p.get_text(strip=True)
+        if len(text) > 20:                    # skip tiny/empty paragraphs
+            items.append({
+                "type": "paragraph",
+                "text": text,
+                "scraped_at": datetime.now().isoformat(),
+            })
+
+    # --- Extract headings ---
+    for tag in soup.find_all(["h1", "h2", "h3", "h4"]):
+        text = tag.get_text(strip=True)
+        if text:
+            items.append({
+                "type": f"heading_{tag.name}",
+                "text": text,
+                "scraped_at": datetime.now().isoformat(),
+            })
+
+    # --- Extract links ---
+    for a in soup.find_all("a", href=True):
+        text = a.get_text(strip=True)
+        href = a["href"]
+        if text and href.startswith("http"):
+            items.append({
+                "type": "link",
+                "text": text,
+                "url":  href,
+                "scraped_at": datetime.now().isoformat(),
+            })
+
+    log.info(f"Extracted {len(items)} items.")
+    return items
+
+
+def save_to_csv(data, filename):
+    if not data:
+        log.warning("No data to save to CSV.")
+        return
+    try:
+        keys = set()
+        for row in data:
+            keys.update(row.keys())
+        with open(filename, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=sorted(keys))
+            writer.writeheader()
+            writer.writerows(data)
+        log.info(f"Saved {len(data)} rows to {filename}")
+    except IOError as e:
+        log.error(f"Could not write CSV: {e}")
+
+
+def save_to_json(data, filename):
+    if not data:
+        log.warning("No data to save to JSON.")
+        return
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        log.info(f"Saved {len(data)} items to {filename}")
+    except IOError as e:
+        log.error(f"Could not write JSON: {e}")
+
+
+def main():
+    log.info("=" * 50)
+    log.info("ShadowFox Scraper starting")
+    log.info("=" * 50)
+
+    r = fetch_page(URL)
+    if r is None:
+        log.error("Aborting — could not retrieve the page.")
+        return
+
+    data = parse_page(r.text)
+
+    if not data:
+        log.warning("Still 0 items. The page is likely JavaScript-rendered.")
+        log.warning("Switch to the Selenium version in Option B.")
+        return
+
+    save_to_csv(data, OUTPUT_CSV)
+    save_to_json(data, OUTPUT_JSON)
+    log.info(f"Done. {len(data)} items scraped.")
+
+
+if __name__ == "__main__":
+    main()

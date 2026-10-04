@@ -1,0 +1,243 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style="whitegrid")
+plt.rcParams["figure.figsize"] = (10, 6)
+plt.rcParams["axes.titlesize"] = 14
+plt.rcParams["axes.titleweight"] = "bold"
+pd.set_option("display.max_columns", None)
+
+
+# ----------------------------------------------------------------------
+# 1. LOAD DATASET
+# ----------------------------------------------------------------------
+def load_data():
+    url = ("https://raw.githubusercontent.com/rfordatascience/tidytuesday/"
+           "master/data/2021/2021-04-20/netflix_titles.csv")
+    try:
+        df = pd.read_csv(url)
+        print(f"[OK] Loaded {len(df)} rows from URL")
+    except Exception as e:
+        print(f"[WARN] URL failed: {e}")
+        print("Download netflix_titles.csv from Kaggle and place it here.")
+        df = pd.read_csv("netflix_titles.csv")
+    return df
+
+
+# ----------------------------------------------------------------------
+# 2. EXPLORE
+# ----------------------------------------------------------------------
+def explore(df):
+    print("\n" + "=" * 60)
+    print("DATASET OVERVIEW")
+    print("=" * 60)
+    print(f"Rows:    {df.shape[0]}")
+    print(f"Columns: {df.shape[1]}")
+    print("\nColumn types:")
+    print(df.dtypes)
+    print("\nMissing values per column:")
+    print(df.isnull().sum().sort_values(ascending=False))
+
+    print("\nContent types:")
+    print(df["type"].value_counts())
+    print(f"\nRelease year range: {df['release_year'].min()} - {df['release_year'].max()}")
+    print(f"Unique ratings: {df['rating'].nunique()}")
+
+
+# ----------------------------------------------------------------------
+# 3. CLEAN
+# ----------------------------------------------------------------------
+def clean(df):
+    data = df.copy()
+
+    # Convert date_added to datetime
+    data["date_added"] = pd.to_datetime(data["date_added"], errors="coerce")
+    data["year_added"] = data["date_added"].dt.year
+
+    # Fill missing text fields
+    for col in ["director", "cast", "country"]:
+        data[col] = data[col].fillna("Unknown")
+
+    # Drop rows missing rating or duration
+    before = len(data)
+    data = data.dropna(subset=["rating", "duration"])
+    print(f"\n[INFO] Dropped {before - len(data)} rows with missing rating/duration.")
+    print(f"[INFO] Remaining rows: {len(data)}")
+    return data
+
+
+# ----------------------------------------------------------------------
+# 4. VISUALIZATIONS
+# ----------------------------------------------------------------------
+def plot_type_split(data):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    counts = data["type"].value_counts()
+
+    axes[0].pie(counts, labels=counts.index, autopct="%1.1f%%",
+                colors=["#E50914", "#221F1F"], startangle=90,
+                textprops={"color": "white", "fontsize": 12})
+    axes[0].set_title("Content Type Split")
+
+    sns.countplot(data=data, x="type", palette=["#E50914", "#221F1F"], ax=axes[1])
+    axes[1].set_title("Total Titles by Type")
+    axes[1].set_ylabel("Number of Titles")
+    axes[1].set_xlabel("")
+
+    plt.tight_layout()
+    plt.savefig("plot1_type_split.png", dpi=120)
+    plt.show()
+
+
+def plot_growth_over_time(data):
+    yearly = data.groupby(["year_added", "type"]).size().unstack(fill_value=0)
+    yearly = yearly[yearly.index >= 2008]  # Netflix streaming era
+
+    yearly.plot(kind="line", marker="o", figsize=(12, 6),
+                color=["#E50914", "#221F1F"], linewidth=2)
+    plt.title("Netflix Content Added per Year (2008-2021)")
+    plt.xlabel("Year Added")
+    plt.ylabel("Number of Titles")
+    plt.legend(title="Type")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("plot2_growth.png", dpi=120)
+    plt.show()
+
+
+def plot_top_countries(data):
+    countries = data["country"].str.split(", ").explode()
+    top = countries[countries != "Unknown"].value_counts().head(10)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=top.values, y=top.index, palette="Reds_r")
+    plt.title("Top 10 Content-Producing Countries on Netflix")
+    plt.xlabel("Number of Titles")
+    plt.ylabel("")
+    plt.tight_layout()
+    plt.savefig("plot3_countries.png", dpi=120)
+    plt.show()
+
+
+def plot_ratings(data):
+    plt.figure(figsize=(12, 6))
+    top = data["rating"].value_counts().head(12)
+    sns.barplot(x=top.index, y=top.values, palette="viridis")
+    plt.title("Distribution of Content Ratings")
+    plt.xlabel("Rating")
+    plt.ylabel("Number of Titles")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig("plot4_ratings.png", dpi=120)
+    plt.show()
+
+
+def plot_genres(data):
+    genres = data["listed_in"].str.split(", ").explode()
+    top = genres.value_counts().head(12)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=top.values, y=top.index, palette="mako")
+    plt.title("Top 12 Genres on Netflix")
+    plt.xlabel("Number of Titles")
+    plt.ylabel("")
+    plt.tight_layout()
+    plt.savefig("plot5_genres.png", dpi=120)
+    plt.show()
+
+
+def plot_release_year_by_type(data):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+    for ax, t in zip(axes, ["Movie", "TV Show"]):
+        subset = data[data["type"] == t]
+        sns.histplot(subset["release_year"], bins=40, ax=ax,
+                     color="#E50914" if t == "Movie" else "#221F1F")
+        ax.set_title(f"{t}s - Release Year Distribution")
+        ax.set_xlabel("Release Year")
+        ax.set_ylabel("Count")
+    plt.tight_layout()
+    plt.savefig("plot6_release_year.png", dpi=120)
+    plt.show()
+
+
+def plot_heatmap(data):
+    pivot = pd.crosstab(data["rating"], data["type"])
+    pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).head(10).index]
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(pivot, annot=True, fmt="d", cmap="Reds",
+                cbar_kws={"label": "Titles"})
+    plt.title("Rating vs Content Type")
+    plt.xlabel("Type")
+    plt.ylabel("Rating")
+    plt.tight_layout()
+    plt.savefig("plot7_heatmap.png", dpi=120)
+    plt.show()
+
+
+# ----------------------------------------------------------------------
+# 5. INSIGHTS
+# ----------------------------------------------------------------------
+def print_insights(data):
+    print("\n" + "=" * 60)
+    print("KEY INSIGHTS")
+    print("=" * 60)
+
+    movies = (data["type"] == "Movie").sum()
+    shows = (data["type"] == "TV Show").sum()
+    total = len(data)
+    print(f"1. Movies dominate the catalog: {movies} ({movies/total*100:.1f}%) "
+          f"vs TV Shows {shows} ({shows/total*100:.1f}%).")
+
+    peak_year = data["year_added"].value_counts().idxmax()
+    peak_count = data["year_added"].value_counts().max()
+    print(f"2. Content addition peaked in {int(peak_year)} with {peak_count} titles.")
+
+    top_country = (data["country"].str.split(", ").explode()
+                   .replace("Unknown", np.nan).dropna().value_counts().idxmax())
+    print(f"3. Top content-producing country: {top_country}.")
+
+    top_rating = data["rating"].value_counts().idxmax()
+    print(f"4. Most common rating: {top_rating} "
+          f"(shows a focus on mature / teen audiences).")
+
+    top_genre = (data["listed_in"].str.split(", ").explode()
+                 .value_counts().idxmax())
+    print(f"5. Most common genre: {top_genre}.")
+
+    print("\nANSWER TO RESEARCH QUESTION:")
+    print("  Netflix shifted from a movie-heavy library to a more balanced")
+    print("  catalog, with TV content playing a growing role since 2015.")
+    print("  Their strategy increasingly favors mature-audience dramas")
+    print("  and international content, reflecting global expansion.")
+
+
+# ----------------------------------------------------------------------
+# MAIN
+# ----------------------------------------------------------------------
+def main():
+    print("=" * 60)
+    print("Netflix Content Analysis")
+    print("=" * 60)
+
+    df = load_data()
+    explore(df)
+    data = clean(df)
+
+    print("\n[INFO] Generating visualizations...")
+    plot_type_split(data)
+    plot_growth_over_time(data)
+    plot_top_countries(data)
+    plot_ratings(data)
+    plot_genres(data)
+    plot_release_year_by_type(data)
+    plot_heatmap(data)
+
+    print_insights(data)
+
+    print("\n[DONE] All plots saved as plot1..plot7*.png")
+
+
+if __name__ == "__main__":
+    main()
