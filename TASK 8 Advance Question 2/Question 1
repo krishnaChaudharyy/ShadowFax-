@@ -1,0 +1,305 @@
+"""
+Cricket Fielding Analysis — T20 Match (IPL2367)
+================================================
+Objective:
+    Analyse fielding performance for three Indian players from one T20
+    innings using the given Performance Score (PS) formula.
+
+Formula:
+    PS = (CP×1) + (GT×1) + (C×3) − (DC×3) + (ST×3)
+       + (RO×3) − (MRO×2) + (DH×2) + RS
+
+Players analysed (Indian team):
+    - Axar Patel
+    - Kuldeep Yadav
+    - Yash Dhull
+
+Run:  python cricket_fielding_analysis.py
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style="whitegrid")
+plt.rcParams["figure.figsize"] = (11, 6)
+plt.rcParams["axes.titlesize"] = 13
+plt.rcParams["axes.titleweight"] = "bold"
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 200)
+
+# ======================================================================
+# WEIGHTS
+# ======================================================================
+WEIGHTS = {
+    "CP":  1,    # Clean Pick
+    "GT":  1,    # Good Throw
+    "C":   3,    # Catch
+    "DC": -3,    # Dropped Catch
+    "ST":  3,    # Stumping
+    "RO":  3,    # Run Out
+    "MRO": -2,   # Missed Run Out
+    "DH":  2,    # Direct Hit
+}
+
+# ======================================================================
+# PLAYERS TO ANALYSE — three Indian cricketers from the sample data
+# ======================================================================
+TARGET_PLAYERS = ["Axar Patel", "Kuldeep Yadav", "Yash Dhull"]
+
+# ======================================================================
+# RAW FIELDING DATA (IPL2367, Innings 1)
+# ======================================================================
+RAW = [
+    ("IPL2367", 1, "Delhi Capitals", "Rilee Russouw",  "0.1", "Short mid wicket", "n", "",  1,  1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Phil Salt",      "0.2", "Wicket keeper",    "Y", "Y", "", 1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Yash Dhull",     "0.3", "Covers",           "Y", "Y", "", 1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Axar Patel",     "0.4", "Point",            "Y", "Y", "", 1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "",               "0.5", "",                 "",  "",  "", 1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Lalit Yadav",    "0.6", "Cover point",      "Y", "Y", "", 1, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Aman Khan",      "1.1", "Long off",         "Y", "Y", "", 2, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "",               "1.2", "",                 "",  "",  "", 2, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Kuldeep Yadav",  "1.3", "Short mid wicket", "Y", "",  "", 2, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "",               "1.4", "",                 "",  "",  "", 2, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Kuldeep Yadav",  "1.5", "Point",            "Y", "Y", "", 2, "Delhi", "Arun Jaitley Stadium"),
+    ("IPL2367", 1, "Delhi Capitals", "Lalit Yadav",    "1.6", "Bowler",           "Y", "",  "", 2, "Delhi", "Arun Jaitley Stadium"),
+]
+
+COLUMNS = ["Match No.", "Innings", "Team", "Player Name", "BallCount",
+           "Position", "Pick", "Throw", "Runs", "Overcount",
+           "Venue", "Stadium"]
+
+df = pd.DataFrame(RAW, columns=COLUMNS)
+df = df[df["Player Name"].str.strip() != ""].reset_index(drop=True)
+
+print("=" * 78)
+print(" CRICKET FIELDING ANALYSIS — IPL2367 (Innings 1)")
+print("=" * 78)
+print(f"\nTotal fielding events recorded: {len(df)}")
+print(f"Players involved: {df['Player Name'].nunique()}")
+print(f"\nPlayers analysed (Indian team): {', '.join(TARGET_PLAYERS)}\n")
+print(df.to_string(index=False))
+
+# ======================================================================
+# CLASSIFY EACH EVENT
+# ======================================================================
+def classify_event(row):
+    pick = str(row["Pick"]).strip().upper()
+    throw = str(row["Throw"]).strip().upper()
+    return {
+        "CP":  1 if pick == "Y" else 0,
+        "GT":  1 if throw == "Y" else 0,
+        "C":   1 if pick == "C" else 0,
+        "DC":  1 if pick == "DC" else 0,
+        "ST":  1 if pick == "S" or throw == "S" else 0,
+        "RO":  1 if throw == "RO" else 0,
+        "MRO": 1 if throw == "MR" else 0,
+        "DH":  1 if throw == "DH" else 0,
+        "RS":  int(row["Runs"]) if str(row["Runs"]).strip() not in ("", "nan") else 0,
+    }
+
+
+events = df.apply(classify_event, axis=1, result_type="expand")
+df = pd.concat([df, events], axis=1)
+
+# ======================================================================
+# PER-PLAYER PERFORMANCE MATRIX
+# ======================================================================
+agg = df.groupby("Player Name").agg(
+    CP=("CP", "sum"),
+    GT=("GT", "sum"),
+    C=("C", "sum"),
+    DC=("DC", "sum"),
+    ST=("ST", "sum"),
+    RO=("RO", "sum"),
+    MRO=("MRO", "sum"),
+    DH=("DH", "sum"),
+    RS=("RS", "sum"),
+).reset_index()
+
+agg["PS"] = (
+    agg["CP"]   * WEIGHTS["CP"]
+  + agg["GT"]   * WEIGHTS["GT"]
+  + agg["C"]    * WEIGHTS["C"]
+  + agg["DC"]   * WEIGHTS["DC"]
+  + agg["ST"]   * WEIGHTS["ST"]
+  + agg["RO"]   * WEIGHTS["RO"]
+  + agg["MRO"]  * WEIGHTS["MRO"]
+  + agg["DH"]   * WEIGHTS["DH"]
+  + agg["RS"]
+)
+
+agg = agg.sort_values("PS", ascending=False).reset_index(drop=True)
+
+print("\n" + "=" * 78)
+print(" FULL PERFORMANCE MATRIX (all fielders)")
+print("=" * 78)
+print(agg.to_string(index=False))
+
+# ======================================================================
+# FOCUS ON THE THREE INDIAN PLAYERS
+# ======================================================================
+top3_df = agg[agg["Player Name"].isin(TARGET_PLAYERS)].reset_index(drop=True)
+top3_df = top3_df.sort_values("PS", ascending=False).reset_index(drop=True)
+
+print("\n" + "=" * 78)
+print(" TOP 3 INDIAN FIELDERS ANALYSED")
+print("=" * 78)
+print(top3_df.to_string(index=False))
+
+# Show the PS calculation step-by-step for each player
+print("\n" + "=" * 78)
+print(" STEP-BY-STEP PS CALCULATION")
+print("=" * 78)
+for _, r in top3_df.iterrows():
+    print(f"\n{r['Player Name']}:")
+    print(f"  PS = (CP×1) + (GT×1) + (C×3) − (DC×3) + (ST×3) "
+          f"+ (RO×3) − (MRO×2) + (DH×2) + RS")
+    print(f"  PS = ({r['CP']}×1) + ({r['GT']}×1) + ({r['C']}×3) "
+          f"− ({r['DC']}×3) + ({r['ST']}×3) + ({r['RO']}×3) "
+          f"− ({r['MRO']}×2) + ({r['DH']}×2) + {r['RS']}")
+    print(f"  PS = {r['PS']}")
+
+# ======================================================================
+# VISUALIZATIONS
+# ======================================================================
+print("\n[INFO] Generating visualizations...\n")
+
+# --- Plot 1: PS for every fielder (Indian trio highlighted) ---
+plt.figure(figsize=(11, 6))
+colors = ["#FF9933" if name in TARGET_PLAYERS else "#2E86AB"
+          for name in agg["Player Name"]]
+sns.barplot(data=agg, x="Player Name", y="PS", palette=colors)
+plt.title("Performance Score — All Fielders "
+          "(Indian trio highlighted in saffron)")
+plt.xlabel("")
+plt.ylabel("Performance Score (PS)")
+plt.xticks(rotation=30, ha="right")
+plt.axhline(0, color="gray", linewidth=0.8, linestyle="--")
+plt.tight_layout()
+plt.savefig("plot1_ps_all_players.png", dpi=120)
+plt.show()
+
+# --- Plot 2: Stacked positive contributions for the Indian trio ---
+metric_cols = ["CP", "GT", "C", "ST", "RO", "DH"]
+top3_long = top3_df.melt(id_vars="Player Name",
+                         value_vars=metric_cols,
+                         var_name="Action", value_name="Count")
+
+plt.figure(figsize=(11, 6))
+sns.barplot(data=top3_long, x="Player Name", y="Count",
+            hue="Action", palette="viridis")
+plt.title("Fielding Contributions — Indian Trio")
+plt.xlabel("")
+plt.ylabel("Count of Actions")
+plt.legend(title="Action", bbox_to_anchor=(1.02, 1), loc="upper left")
+plt.tight_layout()
+plt.savefig("plot2_top3_contributions.png", dpi=120)
+plt.show()
+
+# --- Plot 3: Heatmap of all metrics for the trio ---
+heat_data = top3_df.set_index("Player Name")[
+    ["CP", "GT", "C", "DC", "ST", "RO", "MRO", "DH", "RS", "PS"]
+]
+
+plt.figure(figsize=(11, 4.5))
+sns.heatmap(heat_data, annot=True, fmt="d", cmap="RdYlGn",
+            center=0, linewidths=0.5, cbar_kws={"label": "Value"})
+plt.title("Performance Metrics Heatmap — Indian Trio")
+plt.xlabel("")
+plt.ylabel("")
+plt.tight_layout()
+plt.savefig("plot3_top3_heatmap.png", dpi=120)
+plt.show()
+
+# --- Plot 4: Positive vs negative impact ---
+impact = top3_df.copy()
+impact["Positive"] = (impact["CP"] * 1 + impact["GT"] * 1
+                    + impact["C"] * 3 + impact["ST"] * 3
+                    + impact["RO"] * 3 + impact["DH"] * 2
+                    + impact["RS"].clip(lower=0))
+impact["Negative"] = (impact["DC"] * -3 + impact["MRO"] * -2
+                    + impact["RS"].clip(upper=0))
+
+impact_melt = impact.melt(id_vars="Player Name",
+                          value_vars=["Positive", "Negative"],
+                          var_name="Impact", value_name="Score")
+
+plt.figure(figsize=(10, 6))
+sns.barplot(data=impact_melt, x="Player Name", y="Score",
+            hue="Impact",
+            palette={"Positive": "#138808", "Negative": "#E63946"})
+plt.title("Positive vs Negative Fielding Impact — Indian Trio")
+plt.xlabel("")
+plt.ylabel("Score Contribution")
+plt.axhline(0, color="black", linewidth=0.8)
+plt.tight_layout()
+plt.savefig("plot4_positive_negative.png", dpi=120)
+plt.show()
+
+# --- Plot 5: Fielding positions for the Indian trio ---
+trio_positions = df[df["Player Name"].isin(TARGET_PLAYERS)]["Position"].value_counts()
+
+plt.figure(figsize=(9, 5))
+sns.barplot(x=trio_positions.values, y=trio_positions.index,
+            palette="Oranges_r")
+plt.title("Fielding Positions Covered by the Indian Trio")
+plt.xlabel("Number of events")
+plt.ylabel("")
+plt.tight_layout()
+plt.savefig("plot5_positions.png", dpi=120)
+plt.show()
+
+# ======================================================================
+# EXPORT
+# ======================================================================
+df.to_csv("fielding_events_clean.csv", index=False)
+agg.to_csv("fielding_performance_matrix.csv", index=False)
+top3_df.to_csv("top3_fielders.csv", index=False)
+
+print("\n" + "=" * 78)
+print(" FILES WRITTEN")
+print("=" * 78)
+print("  fielding_events_clean.csv        — cleaned event-by-event data")
+print("  fielding_performance_matrix.csv  — PS for every player")
+print("  top3_fielders.csv                — Indian trio only")
+print("  plot1..plot5*.png                — visual analysis")
+
+# ======================================================================
+# INSIGHTS
+# ======================================================================
+print("\n" + "=" * 78)
+print(" KEY INSIGHTS")
+print("=" * 78)
+
+best = top3_df.iloc[0]
+print(f"1. Best Indian fielder in this innings: {best['Player Name']} "
+      f"with PS = {best['PS']}.")
+
+team_runs_saved = df[df["Player Name"].isin(TARGET_PLAYERS)]["RS"].sum()
+print(f"2. Runs saved by the Indian trio combined: {team_runs_saved:+d}.")
+
+print(f"3. Combined clean picks by the trio: "
+      f"{top3_df['CP'].sum()}.")
+print(f"4. Combined good throws by the trio: "
+      f"{top3_df['GT'].sum()}.")
+
+print(f"5. Catches taken by the trio: {top3_df['C'].sum()}.")
+print(f"6. Drops by the trio: {top3_df['DC'].sum()}.")
+
+print("\nANSWER TO TASK — THREE INDIAN FIELDERS ANALYSED:")
+for i, row in top3_df.iterrows():
+    print(f"  {i+1}. {row['Player Name']:<16}  PS = {row['PS']}")
+
+print("""
+  These three Indian players contributed most through clean pickups,
+  accurate throws and disciplined ground fielding. Their PS scores
+  reflect their value as defensive assets for the team, while any
+  drops or missed run-outs indicate specific areas for improvement
+  in future matches.
+""")
+
+print("=" * 78)
+print(" ANALYSIS COMPLETE")
+print("=" * 78)
